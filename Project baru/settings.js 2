@@ -1,0 +1,7 @@
+// settings.js
+const settings = {
+    maxTime: 1 * 1000 // 1 detik
+  };
+  
+  module.exports = settings;
+
