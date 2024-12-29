@@ -11,6 +11,7 @@ const pino = require("pino");
 const readline = require('readline');
 const { Boom } = require("@hapi/boom");
 const settings = require('./settings.js'); // Import settings
+const cfonts = require('cfonts'); // Import cfonts
 
 // Dynamic import chalk
 let chalk;
@@ -23,10 +24,12 @@ let chalk;
   const question = (text) => new Promise((resolve) => rl.question(text, resolve));
   const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream: "store" }) });
 
+  // Daftar warna valid yang didukung oleh chalk
+  const validColors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
+
   // Fungsi untuk menghasilkan warna acak
   function getRandomColor() {
-    const colors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
-    return colors[Math.floor(Math.random() * colors.length)];
+    return validColors[Math.floor(Math.random() * validColors.length)];
   }
 
   // Fungsi untuk mencetak garis pemisah panjang dengan warna acak
@@ -36,12 +39,22 @@ let chalk;
   }
 
   function printCoolText() {
-    printCoolLine();
-    console.log(chalk.blue.bold('=================================================='));
-    console.log(chalk.green.bold('=================================================='));
-    console.log(chalk.yellow.bold('=================== Wily Kun ====================='));
-    console.log(chalk.green.bold('=================================================='));
-    console.log(chalk.blue.bold('=================================================='));
+    const randomColor = getRandomColor();
+    cfonts.say('auto-read-sw\nby-wily-kun', { // Call cfonts.say()
+      font: 'tiny',
+      align: 'center',
+      colors: [randomColor], // Use random color
+      background: 'transparent',
+      letterSpacing: 1,
+      lineHeight: 1,
+      space: true,
+      maxLength: '0',
+      gradient: true, // Enable gradient
+      independentGradient: false,
+      transitionGradient: false,
+      env: 'node',
+      border: 'underline', // Add a border
+    });
     printCoolLine();
   }
 
@@ -54,7 +67,8 @@ let chalk;
 
     // Prompt pengguna untuk memilih antara Pairing Code dan QR Code
     printCoolLine();
-    const choice = await question('Pilih metode autentikasi:\n1. Pairing Code\n2. QR Code\nMasukkan pilihan (1 atau 2): ');
+    const randomColor = getRandomColor();
+    const choice = await question(chalk[randomColor]('Pilih metode autentikasi:\n1. Pairing Code\n2. QR Code\nMasukkan pilihan (1 atau 2): '));
     printCoolLine();
 
     let printQRInTerminal = true;
