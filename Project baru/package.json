@@ -1,0 +1,19 @@
+{
+  "name": "ReadSW",
+  "version": "1.0.0",
+  "description": "Auto Read Story WhatsApp Using Lib Baileys Multi Device",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js --pairing-code"
+  },
+  "author": "takim",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "latest",
+    "chalk": "^5.4.1",
+    "node-fetch": "latest",
+    "qrcode-terminal": "latest",
+    "readline-sync": "^1.4.10"
+  }
+}
