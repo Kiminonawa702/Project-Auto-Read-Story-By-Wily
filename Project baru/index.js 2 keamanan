@@ -1,0 +1,234 @@
+const {
+  default: WAConnect,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+  makeInMemoryStore,
+  Browsers, 
+  fetchLatestWaWebVersion
+} = require("@whiskeysockets/baileys");
+const pino = require("pino");
+const readline = require('readline');
+const { Boom } = require("@hapi/boom");
+const settings = require('./settings.js'); // Import settings
+const cfonts = require('cfonts'); // Import cfonts
+
+// Dynamic import chalk
+let chalk;
+(async () => {
+  chalk = (await import('chalk')).default;
+
+  const emojis = require('./KumpulanEmot.js'); // Import emojis dari KumpulanEmot.js
+
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const question = (text) => new Promise((resolve) => rl.question(text, resolve));
+  const store = makeInMemoryStore({ logger: pino().child({ level: "silent", stream: "store" }) });
+
+  // Daftar warna valid yang didukung oleh chalk
+  const validColors = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white'];
+
+  // Fungsi untuk menghasilkan warna acak
+  function getRandomColor() {
+    return validColors[Math.floor(Math.random() * validColors.length)];
+  }
+
+  // Fungsi untuk mencetak garis pemisah panjang dengan warna acak
+  function printCoolLine() {
+    const color = getRandomColor();
+    console.log(chalk[color]('='.repeat(50)));
+  }
+
+  function printCoolText() {
+    const randomColor = getRandomColor();
+    cfonts.say('auto-read-sw\nby-wily-kun', { // Call cfonts.say()
+      font: 'tiny',
+      align: 'center',
+      colors: [randomColor], // Use random color
+      background: 'transparent',
+      letterSpacing: 1,
+      lineHeight: 1,
+      space: true,
+      maxLength: '0',
+      gradient: true, // Enable gradient
+      independentGradient: false,
+      transitionGradient: false,
+      env: 'node',
+      border: 'underline', // Add a border
+    });
+    printCoolLine();
+  }
+
+  async function authenticate() {
+    let authenticated = false;
+    let attempts = 0;
+    const maxAttempts = 3;
+    const delayTime = 60000; // 1 minute in milliseconds
+
+    while (!authenticated) {
+      const randomColor = getRandomColor();
+      printCoolLine();
+      const username = await question(chalk[randomColor]('Masukkan username: '));
+      const password = await question(chalk[randomColor]('Masukkan password: '));
+      printCoolLine();
+
+      if (username === 'Wily' && password === 'wily007') {
+        console.log(chalk.green.bold('Autentikasi berhasil!'));
+        authenticated = true;
+      } else {
+        attempts++;
+        console.log(chalk.red.bold('Username atau password salah. Silakan coba lagi.'));
+        if (attempts >= maxAttempts) {
+          console.log(chalk.yellow.bold('Kamu pusing salah mulu memasukan username dan password? Chat owner di bawah ini:'));
+          console.log(chalk.blue.underline('https://wa.me/62890988843244'));
+
+          if (attempts > maxAttempts) {
+            console.log(chalk.red.bold('Terlalu banyak percobaan. Tunggu 1 menit sebelum mencoba lagi.'));
+            await new Promise(resolve => setTimeout(resolve, delayTime));
+
+            if (attempts > maxAttempts + 1) {
+              console.log(chalk.red.bold('Anda telah mencoba terlalu banyak kali. Bot akan mati.'));
+              process.exit(1);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  async function WAStart() {
+    printCoolText(); // Cetak teks keren saat bot dijalankan
+
+    await authenticate();
+
+    const { state, saveCreds } = await useMultiFileAuthState("./sesi");
+    const { version, isLatest } = await fetchLatestWaWebVersion().catch(() => fetchLatestBaileysVersion());
+    console.log(`Using WA v${version.join(".")}, isLatest: ${isLatest}`);
+
+    // Prompt pengguna untuk memilih antara Pairing Code dan QR Code
+    printCoolLine();
+    const randomColor = getRandomColor();
+    const choice = await question(chalk[randomColor]('Pilih metode autentikasi:\n1. Pairing Code\n2. QR Code\nMasukkan pilihan (1 atau 2): '));
+    printCoolLine();
+
+    let printQRInTerminal = true;
+    if (choice.trim() === '1') {
+      printQRInTerminal = false;
+    } else if (choice.trim() !== '2') {
+      console.log('Pilihan tidak valid. Keluar...');
+      process.exit(1);
+    }
+
+    const client = WAConnect({
+      logger: pino({ level: "silent" }),
+      printQRInTerminal: printQRInTerminal,
+      browser: Browsers.ubuntu("Chrome"),
+      auth: state,
+    });
+
+    store.bind(client.ev);
+
+    if (printQRInTerminal === false && !client.authState.creds.registered) {
+      const phoneNumber = await question('Silahkan masukkan nomor Whatsapp kamu: ');
+      let code = await client.requestPairingCode(phoneNumber);
+      code = code?.match(/.{1,4}/g)?.join("-") || code;
+      printCoolLine();
+      console.log(chalk.red.bold('⚠︎ Kode Pairing Whatsapp kamu: ') + chalk.yellow.bold(code));
+      console.log(chalk.red.bold('⚠︎ Kode pairing akan diganti dengan yang baru. Harap segera memasukkan kode ke perangkat tertautan.'));
+      
+      // Tambahkan tutorial cara memasukkan kode pairing ke perangkat WhatsApp dengan emoji keren
+      printCoolLine();
+      console.log(chalk.green.bold('🚀 Cara Memasukkan Kode Pairing ke Perangkat WhatsApp:'));
+      console.log(chalk.green('1. 📱 Buka aplikasi WhatsApp di perangkat yang ingin dihubungkan.'));
+      console.log(chalk.green('2. ⚙️ Buka menu Pengaturan di WhatsApp.'));
+      console.log(chalk.green('3. 🔗 Pilih "Perangkat Tertaut".'));
+      console.log(chalk.green('4. 📋 Pilih "Tautkan Perangkat" dan masukkan kode pairing yang ditampilkan.'));
+      console.log(chalk.green('5. ⏳ Tunggu hingga proses pairing selesai.'));
+      printCoolLine();
+    }
+
+    client.ev.on("messages.upsert", async (chatUpdate) => {
+      try {
+        const m = chatUpdate.messages[0];
+        if (!m.message) return;
+        
+        const maxTime = settings.maxTime; // Gunakan nilai maxTime dari settings
+
+        if (m.key && !m.key.fromMe && m.key.remoteJid === 'status@broadcast') {
+          if (!m.message.reactionMessage) {
+            const allowedSenders = [
+              "6281447345627@s.whatsapp.net",
+              "628145563553@s.whatsapp.net",
+            ];
+
+            if (!allowedSenders.includes(m.key.participant)) {
+              const currentTime = Date.now();
+              const messageTime = m.messageTimestamp * 1000;
+              const timeDiff = currentTime - messageTime;
+
+              if (timeDiff <= maxTime) {
+                function getRandomEmoji() {
+                  const randomIndex = Math.floor(Math.random() * emojis.length);
+                  return emojis[randomIndex];
+                }
+
+                const randomEmoji = getRandomEmoji();
+                try {
+                  await client.sendMessage("status@broadcast", {
+                    react: { text: randomEmoji, key: m.key },
+                  }, { statusJidList: [m.key.participant] });
+
+                  await client.readMessages([m.key]);
+                  console.log(`Berhasil melihat status dari ${m.pushName}`);
+                } catch (error) {
+                  console.error('Error', error);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.log(err);
+      }
+    });
+    
+    client.ev.on("connection.update", async (update) => {
+      const { connection, lastDisconnect } = update;
+      if (connection === "close") {
+        let reason = new Boom(lastDisconnect?.error)?.output.statusCode;
+        if (reason === DisconnectReason.badSession) {
+          console.log(`Bad Session File, Please Delete Session and Scan Again`);
+          process.exit();
+        } else if (reason === DisconnectReason.connectionClosed) {
+          console.log("Connection closed, reconnecting....");
+          WAStart();
+        } else if (reason === DisconnectReason.connectionLost) {
+          console.log("Connection Lost from Server, reconnecting...");
+          WAStart();
+        } else if (reason === DisconnectReason.connectionReplaced) {
+          console.log("Connection Replaced, Another New Session Opened, Please Restart Bot");
+          process.exit();
+        } else if (reason === DisconnectReason.loggedOut) {
+          console.log(`Device Logged Out, Please Delete Folder Session and Scan Again.`);
+          process.exit();
+        } else if (reason === DisconnectReason.restartRequired) {
+          console.log("Restart Required, Restarting...");
+          WAStart();
+        } else if (reason === DisconnectReason.timedOut) {
+          console.log("Connection TimedOut, Reconnecting...");
+          WAStart();
+        } else {
+          console.log(`Unknown DisconnectReason: ${reason}|${connection}`);
+          WAStart();
+        }
+      } else if (connection === "open") {
+        console.log("Connected to Readsw");
+      }
+    });
+
+    client.ev.on("creds.update", saveCreds);
+
+    return client;
+  }
+
+  WAStart();
+})();
